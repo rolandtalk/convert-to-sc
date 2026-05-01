@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Convert to SC</title>
+    <style>
+      :root {
+        --bg: #050812;
+        --panel: #0c1220;
+        --panel-2: #0e1628;
+        --line: #1f2a44;
+        --text: #d9dfec;
+        --muted: #8b95ad;
+        --green: #3dcc78;
+        --red: #ff6666;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: radial-gradient(circle at 10% 0%, #101d38, #050812 50%);
+        color: var(--text);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      }
+      .container { max-width: 1150px; margin: 30px auto; padding: 0 16px; }
+      h1 { margin: 0 0 16px; font-size: 42px; }
+      .panel {
+        border: 1px solid var(--line);
+        background: linear-gradient(180deg, var(--panel), var(--panel-2));
+        border-radius: 14px;
+        overflow: hidden;
+        margin-bottom: 16px;
+      }
+      .toolbar {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        padding: 14px;
+        border-bottom: 1px solid var(--line);
+      }
+      input, button {
+        height: 38px;
+        border-radius: 8px;
+        border: 1px solid var(--line);
+        background: #0a1020;
+        color: var(--text);
+        padding: 0 12px;
+        font-family: inherit;
+      }
+      button { cursor: pointer; }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { padding: 12px 14px; border-bottom: 1px solid #16213a; text-align: left; }
+      th { color: var(--muted); font-weight: 600; }
+      .green { color: var(--green); }
+      .red { color: var(--red); }
+      .meta { color: var(--muted); padding: 12px 14px; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Convert to SC</h1>
+
+      <div class="panel">
+        <div class="toolbar">
+          <input id="q" placeholder="Filter symbols" />
+          <button id="reloadBtn">Run Source Sync</button>
+          <button id="exportBtn">Export CSV</button>
+          <button id="prevBtn">Prev</button>
+          <button id="nextBtn">Next</button>
+          <span id="status" class="meta"></span>
+        </div>
+        <div class="meta" id="meta">Current starter view: existing SCTR dataset and API foundation.</div>
+        <table>
+          <thead>
+            <tr>
+              <th>RNK</th>
+              <th>SYM</th>
+              <th>SCTR</th>
+              <th>1D</th>
+              <th>5D</th>
+              <th>20D</th>
+              <th>60D</th>
+              <th>RSI(14)</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <script>
+      let page = 1;
+      const pageSize = 50;
+
+      function fmt(v) {
+        if (v === null || v === undefined || Number.isNaN(v)) return '-';
+        const n = Number(v);
+        return `${n > 0 ? '+' : ''}${n.toFixed(2)}%`;
+      }
+
+      function metricClass(v) {
+        if (v === null || v === undefined || Number.isNaN(v)) return '';
+        return Number(v) >= 0 ? 'green' : 'red';
+      }
+
+      async function load() {
+        const q = document.getElementById('q').value.trim();
+        const res = await fetch(`/api/picks/latest?q=${encodeURIComponent(q)}&page=${page}&page_size=${pageSize}`);
+        const json = await res.json();
+
+        const rowsEl = document.getElementById('rows');
+        rowsEl.innerHTML = '';
+
+        if (json.status !== 'ok') {
+          document.getElementById('meta').textContent = 'No data yet. Run the source sync to load the current starter dataset.';
+          return;
+        }
+
+        for (const r of json.data) {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${r.rank}</td>
+            <td>${r.symbol}</td>
+            <td>${r.sctr ?? '-'}</td>
+            <td class="${metricClass(r.perf_1d)}">${fmt(r.perf_1d)}</td>
+            <td class="${metricClass(r.perf_5d)}">${fmt(r.perf_5d)}</td>
+            <td class="${metricClass(r.perf_20d)}">${fmt(r.perf_20d)}</td>
+            <td class="${metricClass(r.perf_60d)}">${fmt(r.perf_60d)}</td>
+            <td>${r.rsi_14 ? Number(r.rsi_14).toFixed(1) : '-'}</td>
+          `;
+          rowsEl.appendChild(tr);
+        }
+
+        const from = (json.page - 1) * json.page_size + 1;
+        const to = Math.min(json.total, from + json.data.length - 1);
+        document.getElementById('meta').textContent = `Perf: ${from}-${to} of ${json.total}`;
+      }
+
+      async function pollTask(taskId) {
+        const status = document.getElementById('status');
+        for (let i = 0; i < 120; i++) {
+          const res = await fetch(`/api/jobs/status/${taskId}`);
+          const json = await res.json();
+          status.textContent = `Task ${taskId}: ${json.state}`;
+          if (json.state === 'SUCCESS') return json;
+          if (json.state === 'FAILURE') throw new Error(json.error || 'Task failed');
+          await new Promise((r) => setTimeout(r, 1000));
+        }
+        throw new Error('Task timeout');
+      }
+
+      async function post(url, okText) {
+        const status = document.getElementById('status');
+        status.textContent = 'Running...';
+        try {
+          const res = await fetch(url, { method: 'POST' });
+          const json = await res.json();
+          if (!json.task_id) {
+            status.textContent = `${okText}: ${JSON.stringify(json)}`;
+            await load();
+            return;
+          }
+          status.textContent = `Queued: ${json.task_id}`;
+          const finalState = await pollTask(json.task_id);
+          status.textContent = `${okText}: ${JSON.stringify(finalState.result ?? finalState)}`;
+          await load();
+        } catch (e) {
+          status.textContent = `Error: ${e.message}`;
+        }
+      }
+
+      document.getElementById('reloadBtn').onclick = () => post('/api/jobs/run', 'Sync done');
+      document.getElementById('exportBtn').onclick = () => { window.location.href = '/api/export/latest.csv'; };
+      document.getElementById('q').onchange = () => { page = 1; load(); };
+      document.getElementById('prevBtn').onclick = () => { if (page > 1) { page--; load(); } };
+      document.getElementById('nextBtn').onclick = () => { page++; load(); };
+
+      load();
+    </script>
+  </body>
+</html>

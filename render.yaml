@@ -1,0 +1,54 @@
+services:
+  - type: redis
+    name: dreamlist-redis
+    ipAllowList: []
+
+  - type: web
+    name: dreamlist-web
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    startCommand: python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: APP_TIMEZONE
+        value: Asia/Taipei
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: dreamlist-redis
+          property: connectionString
+      - key: CELERY_BROKER_URL
+        fromService:
+          type: redis
+          name: dreamlist-redis
+          property: connectionString
+      - key: CELERY_RESULT_BACKEND
+        fromService:
+          type: redis
+          name: dreamlist-redis
+          property: connectionString
+
+  - type: worker
+    name: dreamlist-worker
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    startCommand: celery -A app.celery_app:celery_app worker --loglevel=INFO
+    envVars:
+      - key: APP_TIMEZONE
+        value: Asia/Taipei
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: dreamlist-redis
+          property: connectionString
+      - key: CELERY_BROKER_URL
+        fromService:
+          type: redis
+          name: dreamlist-redis
+          property: connectionString
+      - key: CELERY_RESULT_BACKEND
+        fromService:
+          type: redis
+          name: dreamlist-redis
+          property: connectionString

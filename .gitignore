@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+.pytest_cache/
+data/
+service-account.json
+.DS_Store
+artifact_slides/
