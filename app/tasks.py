@@ -39,6 +39,40 @@ def build_convert_run_key() -> str:
     return _convert_run_key()
 
 
+def run_convert_capture(run_id: int) -> dict:
+    run = get_convert_run(run_id)
+    if not run:
+        raise RuntimeError(f"Convert run {run_id} was not found.")
+
+    update_convert_run_status(run_id, "running")
+    symbol_rows = list_convert_symbols(run_id)
+
+    try:
+        success_count = 0
+        client = ChartCaptureClient()
+        for row in symbol_rows:
+            symbol = str(row["symbol"])
+            update_convert_symbol_status(int(row["id"]), status="running", error_message="")
+            capture = client.capture(str(run["run_key"]), symbol, settings.screenshot_output_dir)
+            update_convert_symbol_status(
+                int(row["id"]),
+                status="ready",
+                source_url=capture["source_url"],
+                image_path=capture["image_filename"],
+                error_message="",
+            )
+            success_count += 1
+
+        finish_convert_run(run_id, "ok", success_count)
+        return {"status": "ok", "run_id": run_id, "count": success_count}
+    except Exception as exc:
+        for row in symbol_rows:
+            if row["status"] in {"pending", "running"}:
+                update_convert_symbol_status(int(row["id"]), status="failed", error_message=str(exc))
+        finish_convert_run(run_id, "failed", 0, str(exc))
+        raise
+
+
 @celery_app.task(
     bind=True,
     name="app.tasks.run_sctr_pipeline",
@@ -81,35 +115,8 @@ def run_sctr_pipeline_task(self, source: str = "manual") -> dict:
     retry_kwargs={"max_retries": settings.task_max_retries},
 )
 def capture_convert_run_task(self, run_id: int) -> dict:
-    run = get_convert_run(run_id)
-    if not run:
-        raise RuntimeError(f"Convert run {run_id} was not found.")
-
-    update_convert_run_status(run_id, "running")
-    symbol_rows = list_convert_symbols(run_id)
-
     try:
-        success_count = 0
-        with ChartCaptureClient() as client:
-            for row in symbol_rows:
-                symbol = str(row["symbol"])
-                update_convert_symbol_status(int(row["id"]), status="running", error_message="")
-                capture = client.capture(str(run["run_key"]), symbol, settings.screenshot_output_dir)
-                update_convert_symbol_status(
-                    int(row["id"]),
-                    status="ready",
-                    source_url=capture["source_url"],
-                    image_path=capture["image_filename"],
-                    error_message="",
-                )
-                success_count += 1
-
-        finish_convert_run(run_id, "ok", success_count)
-        return {"status": "ok", "run_id": run_id, "count": success_count}
+        return run_convert_capture(run_id)
     except Exception as exc:
-        for row in symbol_rows:
-            if row["status"] == "pending":
-                update_convert_symbol_status(int(row["id"]), status="failed", error_message=str(exc))
-        finish_convert_run(run_id, "failed", 0, str(exc))
         self.update_state(state=states.FAILURE, meta={"error": str(exc)})
         raise

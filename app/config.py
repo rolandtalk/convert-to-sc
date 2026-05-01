@@ -24,6 +24,10 @@ class Settings(BaseModel):
     chart_capture_timeout_ms: int = int(os.getenv("CHART_CAPTURE_TIMEOUT_MS", "45000"))
     chart_capture_viewport_width: int = int(os.getenv("CHART_CAPTURE_VIEWPORT_WIDTH", "1440"))
     chart_capture_viewport_height: int = int(os.getenv("CHART_CAPTURE_VIEWPORT_HEIGHT", "2200"))
+    run_tasks_inline: bool = os.getenv("RUN_TASKS_INLINE", "false").lower() == "true"
+    openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
+    openai_vision_model: str = os.getenv("OPENAI_VISION_MODEL", "gpt-4.1-mini")
+    openai_vision_timeout_seconds: int = int(os.getenv("OPENAI_VISION_TIMEOUT_SECONDS", "90"))
 
     redis_url: str = os.getenv("REDIS_URL", "redis://redis:6379/0")
     celery_broker_url: str = os.getenv("CELERY_BROKER_URL", os.getenv("REDIS_URL", "redis://redis:6379/0"))

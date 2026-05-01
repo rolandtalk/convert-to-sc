@@ -3,6 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#07111f" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>Convert to SC</title>
     <style>
       :root {
@@ -53,7 +56,11 @@
       .shell {
         max-width: 1440px;
         margin: 0 auto;
-        padding: 28px 18px 40px;
+        padding:
+          calc(18px + env(safe-area-inset-top, 0px))
+          calc(18px + env(safe-area-inset-right, 0px))
+          calc(40px + env(safe-area-inset-bottom, 0px))
+          calc(18px + env(safe-area-inset-left, 0px));
       }
 
       .hero {
@@ -66,6 +73,13 @@
           linear-gradient(135deg, rgba(16, 34, 59, 0.96), rgba(8, 17, 31, 0.88)),
           var(--panel);
         box-shadow: var(--shadow);
+      }
+
+      .hero-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
       }
 
       .hero::after {
@@ -101,12 +115,10 @@
         letter-spacing: -0.04em;
       }
 
-      .hero-copy {
-        max-width: 820px;
-        margin: 0;
-        color: #c8d7ee;
-        font-size: 1.08rem;
-        line-height: 1.6;
+      .hero-actions {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
       }
 
       .hero-grid {
@@ -171,6 +183,87 @@
         line-height: 1.6;
       }
 
+      .input-source-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.2fr) minmax(260px, 0.8fr);
+        gap: 16px;
+        margin-top: 16px;
+      }
+
+      .upload-card {
+        padding: 16px;
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.03);
+      }
+
+      .upload-label {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 52px;
+        padding: 0 16px;
+        border: 1px dashed rgba(103, 183, 255, 0.4);
+        border-radius: 999px;
+        color: var(--blue);
+        cursor: pointer;
+      }
+
+      .upload-label input {
+        display: none;
+      }
+
+      .upload-note {
+        margin-top: 10px;
+        color: var(--muted);
+        font-size: 0.92rem;
+        line-height: 1.5;
+      }
+
+      .upload-status {
+        min-height: 22px;
+        margin-top: 10px;
+        color: var(--muted);
+        font-size: 0.92rem;
+      }
+
+      .action-status {
+        min-height: 22px;
+        margin-top: 12px;
+        color: var(--muted);
+        font-size: 0.94rem;
+      }
+
+      .preview-card {
+        display: grid;
+        gap: 12px;
+      }
+
+      .preview-frame {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 220px;
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: rgba(4, 10, 20, 0.72);
+      }
+
+      .preview-frame img {
+        display: block;
+        width: 100%;
+        height: auto;
+        object-fit: contain;
+      }
+
+      .preview-empty {
+        padding: 18px;
+        color: var(--muted);
+        text-align: center;
+        line-height: 1.5;
+      }
+
       .textarea:focus,
       .text-input:focus {
         outline: none;
@@ -190,8 +283,8 @@
         align-items: center;
         justify-content: center;
         gap: 10px;
-        min-height: 44px;
-        padding: 0 16px;
+        min-height: 52px;
+        padding: 0 18px;
         border: 1px solid var(--line);
         border-radius: 999px;
         background: rgba(255, 255, 255, 0.03);
@@ -205,6 +298,12 @@
         border-color: var(--line-strong);
       }
 
+      .button:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+        transform: none;
+      }
+
       .button-primary {
         border-color: rgba(103, 183, 255, 0.32);
         background: linear-gradient(135deg, rgba(85, 172, 255, 0.34), rgba(65, 141, 228, 0.18));
@@ -214,13 +313,34 @@
         background: rgba(255, 255, 255, 0.04);
       }
 
+      .button-attention {
+        animation: pulseGlow 1.6s ease-in-out infinite;
+        border-color: rgba(255, 202, 106, 0.58);
+        background: linear-gradient(135deg, rgba(255, 202, 106, 0.22), rgba(255, 255, 255, 0.06));
+      }
+
+      .button-processing {
+        animation: none;
+      }
+
+      @keyframes pulseGlow {
+        0%, 100% {
+          box-shadow: 0 0 0 0 rgba(255, 202, 106, 0.1);
+          transform: translateY(0);
+        }
+        50% {
+          box-shadow: 0 0 0 10px rgba(255, 202, 106, 0.04);
+          transform: translateY(-1px);
+        }
+      }
+
       .button-ghost {
         background: transparent;
       }
 
       .stats {
         display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: minmax(0, 1fr);
         gap: 12px;
         margin-top: 18px;
       }
@@ -241,6 +361,15 @@
         margin-top: 6px;
         font-size: 1.55rem;
         font-family: "SFMono-Regular", Menlo, Monaco, Consolas, monospace;
+      }
+
+      .stat-symbol-list {
+        margin-top: 8px;
+        color: var(--muted);
+        font-family: "SFMono-Regular", Menlo, Monaco, Consolas, monospace;
+        font-size: 0.86rem;
+        line-height: 1.5;
+        word-break: break-word;
       }
 
       .layout {
@@ -291,7 +420,7 @@
 
       .text-input {
         width: 100%;
-        min-height: 44px;
+        min-height: 52px;
         padding: 0 14px;
         border: 1px solid var(--line);
         border-radius: 999px;
@@ -303,56 +432,6 @@
         margin-top: 12px;
         color: var(--muted);
         font-size: 0.92rem;
-      }
-
-      .progress-wrap {
-        display: grid;
-        gap: 14px;
-      }
-
-      .progress-bar {
-        height: 12px;
-        overflow: hidden;
-        border-radius: 999px;
-        background: rgba(255, 255, 255, 0.06);
-        border: 1px solid var(--line);
-      }
-
-      .progress-fill {
-        height: 100%;
-        width: 0%;
-        border-radius: inherit;
-        background: linear-gradient(90deg, #65b7ff, #4ddb95);
-        transition: width 240ms ease;
-      }
-
-      .progress-meta {
-        display: flex;
-        justify-content: space-between;
-        gap: 12px;
-        color: var(--muted);
-        font-size: 0.95rem;
-      }
-
-      .status-list {
-        display: grid;
-        gap: 10px;
-        margin-top: 2px;
-      }
-
-      .status-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 10px;
-        padding: 12px 14px;
-        border: 1px solid var(--line);
-        border-radius: 14px;
-        background: rgba(255, 255, 255, 0.03);
-      }
-
-      .status-row strong {
-        font-family: "SFMono-Regular", Menlo, Monaco, Consolas, monospace;
       }
 
       .badge {
@@ -390,109 +469,6 @@
         color: var(--red);
         background: rgba(255, 127, 127, 0.12);
         border: 1px solid rgba(255, 127, 127, 0.22);
-      }
-
-      .gallery-head {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        margin-bottom: 16px;
-      }
-
-      .gallery {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-        gap: 16px;
-      }
-
-      .chart-card {
-        overflow: hidden;
-        border: 1px solid var(--line);
-        border-radius: 18px;
-        background: rgba(255, 255, 255, 0.03);
-      }
-
-      .chart-preview {
-        position: relative;
-        display: flex;
-        align-items: flex-end;
-        min-height: 190px;
-        padding: 14px;
-        background:
-          linear-gradient(180deg, rgba(8, 17, 30, 0.1), rgba(8, 17, 30, 0.85)),
-          linear-gradient(135deg, rgba(55, 116, 204, 0.4), rgba(77, 219, 149, 0.08)),
-          repeating-linear-gradient(
-            0deg,
-            rgba(255, 255, 255, 0.04) 0,
-            rgba(255, 255, 255, 0.04) 1px,
-            transparent 1px,
-            transparent 28px
-          ),
-          repeating-linear-gradient(
-            90deg,
-            rgba(255, 255, 255, 0.04) 0,
-            rgba(255, 255, 255, 0.04) 1px,
-            transparent 1px,
-            transparent 48px
-          );
-      }
-
-      .chart-preview::before {
-        content: "";
-        position: absolute;
-        inset: 20px 14px 52px;
-        border-radius: 14px;
-        background:
-          linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent),
-          url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 420 200'%3E%3Cpolyline fill='none' stroke='%2367b7ff' stroke-width='5' points='0,150 40,130 75,138 108,94 150,112 185,70 225,78 265,48 305,68 350,42 390,58 420,24'/%3E%3Cpolyline fill='none' stroke='%234ddb95' stroke-width='4' stroke-dasharray='5 8' points='0,166 40,172 75,142 108,152 150,118 185,132 225,98 265,108 305,86 350,94 390,74 420,82'/%3E%3C/svg%3E")
-            center / cover no-repeat;
-        opacity: 0.95;
-      }
-
-      .chart-preview span {
-        position: relative;
-        z-index: 1;
-        color: #eaf2ff;
-        font-size: 0.92rem;
-      }
-
-      .chart-body {
-        padding: 14px;
-      }
-
-      .chart-top {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 12px;
-      }
-
-      .chart-symbol {
-        margin: 0;
-        font-size: 1.4rem;
-        font-family: "SFMono-Regular", Menlo, Monaco, Consolas, monospace;
-      }
-
-      .chart-meta {
-        margin: 8px 0 0;
-        color: var(--muted);
-        font-size: 0.95rem;
-      }
-
-      .card-actions {
-        display: flex;
-        gap: 10px;
-        margin-top: 14px;
-      }
-
-      .card-link {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        color: var(--blue);
-        text-decoration: none;
-        font-size: 0.94rem;
       }
 
       .side-list {
@@ -540,16 +516,27 @@
         font-size: 0.92rem;
       }
 
+      .mobile-note {
+        margin-top: 8px;
+        color: var(--muted);
+        font-size: 0.88rem;
+      }
+
       @media (max-width: 1100px) {
         .hero-grid,
-        .layout {
+        .layout,
+        .input-source-grid {
           grid-template-columns: 1fr;
         }
       }
 
       @media (max-width: 720px) {
         .shell {
-          padding: 16px 14px 28px;
+          padding:
+            calc(12px + env(safe-area-inset-top, 0px))
+            calc(12px + env(safe-area-inset-right, 0px))
+            calc(28px + env(safe-area-inset-bottom, 0px))
+            calc(12px + env(safe-area-inset-left, 0px));
         }
 
         .hero,
@@ -557,13 +544,31 @@
           padding: 18px;
         }
 
+        .panel-title-row {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+
+        .hero-top {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+
+        .textarea {
+          min-height: 180px;
+          font-size: 16px;
+        }
+
+        .upload-label {
+          width: 100%;
+        }
+
         .stats {
           grid-template-columns: 1fr;
         }
 
         .symbol-entry,
-        .input-actions,
-        .card-actions {
+        .input-actions {
           flex-direction: column;
         }
 
@@ -577,71 +582,69 @@
   <body>
     <div class="shell">
       <section class="hero">
-        <span class="eyebrow">Output page prototype</span>
-        <h1>Convert text into a chart gallery.</h1>
-        <p class="hero-copy">
-          This first dashboard draft shows how Convert to SC can flow from raw market notes to extracted
-          symbols, screenshot progress, and a finished chart wall that is easy to review.
-        </p>
+        <div class="hero-top">
+          <div>
+            <span class="eyebrow">Combined results flow</span>
+            <h1>Convert to SC</h1>
+          </div>
+          <div class="hero-actions">
+            <a id="watchListLink" class="button button-secondary" href="/watchlist">Open Watch List</a>
+            <a id="savedListLink" class="button button-secondary" href="/saved-lists">Saved List</a>
+          </div>
+        </div>
 
         <div class="hero-grid">
           <div class="panel">
             <div class="panel-inner">
               <div class="panel-title-row">
                 <div>
-                  <h2>1. Paste Chart Description</h2>
-                  <p class="muted">Drop in free-form notes, a subject line, or a watchlist paragraph.</p>
+                  <h2>1. Prepare Source</h2>
+                  <p class="muted">Paste notes or upload a screenshot, then send the whole set into one combined results page.</p>
                 </div>
                 <span class="pill">Input stage</span>
               </div>
 
-              <textarea id="sourceText" class="textarea" spellcheck="false">Watching AAPL, NVDA, TSLA and AMD for relative strength. Also review SHOP after breakout, and keep an eye on MSFT if momentum holds into next week.</textarea>
+              <textarea id="sourceText" class="textarea" spellcheck="false" placeholder="Paste chart notes, watchlist text, or OCR output here."></textarea>
 
-              <div class="input-actions">
-                <button id="extractBtn" class="button button-primary">Extract Symbols</button>
-                <button id="generateBtn" class="button button-secondary">Generate Chart Set</button>
-                <button id="sampleBtn" class="button button-ghost">Load New Sample</button>
+              <div class="input-source-grid">
+                <div class="upload-card">
+                  <div class="panel-title-row">
+                    <div>
+                      <h3>Screenshot Source</h3>
+                    </div>
+                    <span class="pill">Beta OCR</span>
+                  </div>
+
+                  <label class="upload-label">
+                    <input id="sourceImage" type="file" accept="image/*" />
+                    Choose screenshot
+                  </label>
+                  <div id="uploadStatus" class="upload-status">No screenshot selected yet.</div>
+                </div>
+
+                <div class="preview-card">
+                  <div class="panel-title-row">
+                    <div>
+                      <h3>Image Preview</h3>
+                    </div>
+                  </div>
+                  <div class="preview-frame" id="imagePreviewFrame">
+                    <div class="preview-empty">Upload a screenshot to preview it here before extraction.</div>
+                  </div>
+                  <div class="input-actions">
+                    <button id="extractImageBtn" class="button button-secondary button-attention">Extract Symbols</button>
+                  </div>
+                </div>
               </div>
+
+              <div id="actionStatus" class="action-status">Paste notes or upload a screenshot to begin.</div>
+              <div id="resultLaunch" class="action-status hidden"></div>
 
               <div class="stats">
                 <div class="stat-card">
                   <div class="stat-label">Symbols detected</div>
                   <div id="statSymbols" class="stat-value">0</div>
-                </div>
-                <div class="stat-card">
-                  <div class="stat-label">Screenshots planned</div>
-                  <div id="statShots" class="stat-value">0</div>
-                </div>
-                <div class="stat-card">
-                  <div class="stat-label">Ready to publish</div>
-                  <div id="statReady" class="stat-value">0</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="panel">
-            <div class="panel-inner">
-              <div class="panel-title-row">
-                <div>
-                  <h2>Pipeline Snapshot</h2>
-                  <p class="muted">A quick read of the current run before the user opens the full gallery.</p>
-                </div>
-                <span id="runBadge" class="badge badge-wait">Draft</span>
-              </div>
-
-              <div class="side-list">
-                <div class="history-card">
-                  <strong>Extract</strong>
-                  <p>Filter likely ticker symbols from raw text and ignore normal words.</p>
-                </div>
-                <div class="history-card">
-                  <strong>Capture</strong>
-                  <p>Open each chart source and collect the relevant screenshot asset.</p>
-                </div>
-                <div class="history-card">
-                  <strong>Publish</strong>
-                  <p>Render a result page where the user can review, retry, and export.</p>
+                  <div id="statSymbolList" class="stat-symbol-list">None yet</div>
                 </div>
               </div>
             </div>
@@ -655,21 +658,21 @@
             <div class="panel-inner">
               <div class="panel-title-row">
                 <div>
-                  <h2>2. Review Symbols</h2>
-                  <p class="muted">Users can confirm the extracted set before any screenshot job begins.</p>
+                  <h2>2. Confirm Symbols</h2>
+                  <p class="muted">Make quick corrections here before the combined page is generated.</p>
                 </div>
                 <span class="pill">Editable</span>
               </div>
-
-              <div id="chipRow" class="chip-row"></div>
 
               <div class="symbol-entry">
                 <input id="manualSymbol" class="text-input" placeholder="Add a symbol manually, for example META" />
                 <button id="addSymbolBtn" class="button button-secondary">Add Symbol</button>
               </div>
 
+              <div id="chipRow" class="chip-row"></div>
+
               <div id="reviewHint" class="hint">
-                No symbols extracted yet. Click <strong>Extract Symbols</strong> to build the review list.
+                No symbols extracted yet. Upload a screenshot, paste notes, or add symbols manually to build the review list.
               </div>
             </div>
           </section>
@@ -678,80 +681,20 @@
             <div class="panel-inner">
               <div class="panel-title-row">
                 <div>
-                  <h2>3. Screenshot Progress</h2>
-                  <p class="muted">This is the run-status component that will later reflect the real worker jobs.</p>
+                  <h2>3. Generate Chart Set</h2>
+                  <p class="muted">When the symbols look right, launch the combined chart print from this step.</p>
                 </div>
-                <span id="progressBadge" class="badge badge-wait">Waiting</span>
+                <span class="pill">Final step</span>
               </div>
 
-              <div class="progress-wrap">
-                <div class="progress-bar">
-                  <div id="progressFill" class="progress-fill"></div>
-                </div>
-                <div class="progress-meta">
-                  <span id="progressLabel">Waiting for symbols</span>
-                  <span id="progressCount">0 / 0 complete</span>
-                </div>
+              <div class="input-actions">
+                <button id="generateBtn" class="button button-secondary button-attention">Generate Chart Set</button>
               </div>
-
-              <div id="statusList" class="status-list"></div>
+              <div class="hint">This launches the combined chart print page automatically after the run is created.</div>
             </div>
           </section>
 
-          <section class="panel">
-            <div class="panel-inner">
-              <div class="gallery-head">
-                <div>
-                  <h2>4. Results Gallery</h2>
-                  <p class="muted">The main output view: one card per symbol with chart preview, source, and actions.</p>
-                </div>
-                <span id="galleryPill" class="pill">0 cards</span>
-              </div>
-
-              <div id="gallery" class="gallery"></div>
-              <div class="footer-note">
-                The preview cards below are frontend prototypes. Later we will replace the mock preview with real screenshots saved by the backend.
-              </div>
-            </div>
-          </section>
         </div>
-
-        <aside class="stack">
-          <section class="panel">
-            <div class="panel-inner">
-              <div class="panel-title-row">
-                <div>
-                  <h3>Run History</h3>
-                  <p class="muted">Recent runs can be loaded here from the current backend.</p>
-                </div>
-                <span class="pill">Existing API</span>
-              </div>
-              <div id="historyList" class="side-list"></div>
-            </div>
-          </section>
-
-          <section class="panel">
-            <div class="panel-inner">
-              <div class="panel-title-row">
-                <div>
-                  <h3>Source Sync</h3>
-                  <p class="muted">Keeps the current SCTR starter data available while we build the new workflow.</p>
-                </div>
-                <span class="pill">Starter bridge</span>
-              </div>
-
-              <div class="source-card">
-                <strong>Sync current market source</strong>
-                <p>Use the existing pipeline to refresh the starter dataset and keep the repo demonstrable while we build real screenshot jobs.</p>
-                <div class="source-toolbar">
-                  <button id="syncBtn" class="button button-primary">Run Source Sync</button>
-                  <button id="exportBtn" class="button button-secondary">Export CSV</button>
-                </div>
-                <div id="syncStatus" class="source-status">Idle.</div>
-              </div>
-            </div>
-          </section>
-        </aside>
       </div>
     </div>
 
@@ -767,24 +710,80 @@
       let currentRun = null;
       let currentTaskId = null;
       let runPollHandle = null;
-
       const sourceText = document.getElementById("sourceText");
+      const watchListLink = document.getElementById("watchListLink");
+      const savedListLink = document.getElementById("savedListLink");
       const chipRow = document.getElementById("chipRow");
       const manualSymbol = document.getElementById("manualSymbol");
       const reviewHint = document.getElementById("reviewHint");
-      const statusList = document.getElementById("statusList");
-      const gallery = document.getElementById("gallery");
-      const historyList = document.getElementById("historyList");
       const statSymbols = document.getElementById("statSymbols");
-      const statShots = document.getElementById("statShots");
-      const statReady = document.getElementById("statReady");
-      const progressFill = document.getElementById("progressFill");
-      const progressLabel = document.getElementById("progressLabel");
-      const progressCount = document.getElementById("progressCount");
-      const progressBadge = document.getElementById("progressBadge");
-      const runBadge = document.getElementById("runBadge");
-      const galleryPill = document.getElementById("galleryPill");
-      const syncStatus = document.getElementById("syncStatus");
+      const statSymbolList = document.getElementById("statSymbolList");
+      const actionStatus = document.getElementById("actionStatus");
+      const resultLaunch = document.getElementById("resultLaunch");
+      const progressLabel = actionStatus;
+      const extractBtn = document.getElementById("extractImageBtn");
+      const generateBtn = document.getElementById("generateBtn");
+      const sourceImage = document.getElementById("sourceImage");
+      const uploadStatus = document.getElementById("uploadStatus");
+      const imagePreviewFrame = document.getElementById("imagePreviewFrame");
+
+      let selectedImageFile = null;
+      let openAiVisionEnabled = false;
+      let extractDotsHandle = null;
+      let extractButtonLabel = "Extract Symbols";
+      let generateDotsHandle = null;
+      let generateButtonLabel = "Generate Chart Set";
+      const isStandaloneFile = window.location.protocol === "file:";
+      const localAppBase = "http://127.0.0.1:8000";
+      const appBase = isStandaloneFile ? localAppBase : window.location.origin;
+      watchListLink.href = `${appBase}/watchlist`;
+      savedListLink.href = `${appBase}/saved-lists`;
+
+      function startGenerateProcessingState() {
+        let dots = 0;
+        generateBtn.disabled = true;
+        generateBtn.classList.add("button-processing");
+        const render = () => {
+          dots = (dots % 6) + 1;
+          generateBtn.textContent = `processing ${".".repeat(dots)}`;
+        };
+        render();
+        stopGenerateProcessingState();
+        generateDotsHandle = setInterval(render, 500);
+      }
+
+      function stopGenerateProcessingState() {
+        if (generateDotsHandle) {
+          clearInterval(generateDotsHandle);
+          generateDotsHandle = null;
+        }
+        generateBtn.disabled = false;
+        generateBtn.classList.remove("button-processing");
+        generateBtn.textContent = generateButtonLabel;
+      }
+
+      function startExtractProcessingState() {
+        let dots = 0;
+        extractBtn.disabled = true;
+        extractBtn.classList.add("button-processing");
+        const render = () => {
+          dots = (dots % 6) + 1;
+          extractBtn.textContent = `processing ${".".repeat(dots)}`;
+        };
+        render();
+        stopExtractProcessingState();
+        extractDotsHandle = setInterval(render, 500);
+      }
+
+      function stopExtractProcessingState() {
+        if (extractDotsHandle) {
+          clearInterval(extractDotsHandle);
+          extractDotsHandle = null;
+        }
+        extractBtn.disabled = !openAiVisionEnabled;
+        extractBtn.classList.remove("button-processing");
+        extractBtn.textContent = extractButtonLabel;
+      }
 
       function escapeHtml(value) {
         return String(value)
@@ -793,6 +792,33 @@
           .replaceAll(">", "&gt;")
           .replaceAll('"', "&quot;")
           .replaceAll("'", "&#039;");
+      }
+
+      function appUrl(path) {
+        return `${appBase}${path}`;
+      }
+
+      function absoluteUrl(url) {
+        if (!url) return "";
+        if (url.startsWith("http://") || url.startsWith("https://")) return url;
+        return appUrl(url.startsWith("/") ? url : `/${url}`);
+      }
+
+      async function validateSymbols(candidates) {
+        if (!candidates.length) {
+          return [];
+        }
+
+        const response = await fetch(appUrl("/api/convert/validate"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ candidates })
+        });
+        const json = await response.json();
+        if (json.status !== "ok") {
+          throw new Error(json.detail || "Failed to validate ticker symbols");
+        }
+        return json.symbols || [];
       }
 
       function badgeClass(status) {
@@ -813,7 +839,7 @@
       function renderChips() {
         chipRow.innerHTML = "";
         if (!symbols.length) {
-          reviewHint.innerHTML = "No symbols extracted yet. Click <strong>Extract Symbols</strong> to build the review list.";
+          reviewHint.textContent = "No symbols extracted yet. Upload a screenshot, paste notes, or add symbols manually to build the review list.";
           return;
         }
 
@@ -832,116 +858,93 @@
       }
 
       function renderStats() {
-        const ready = currentRun ? currentRun.symbols.filter((item) => item.status === "ready").length : 0;
         statSymbols.textContent = `${symbols.length}`;
-        statShots.textContent = `${currentRun ? currentRun.symbols.length : 0}`;
-        statReady.textContent = `${ready}`;
+        statSymbolList.textContent = symbols.length ? symbols.join(", ") : "None yet";
       }
 
-      function renderProgress() {
-        if (!currentRun) {
-          progressFill.style.width = "0%";
-          progressLabel.textContent = symbols.length ? "Symbols reviewed and ready for capture" : "Waiting for symbols";
-          progressCount.textContent = "0 / 0 complete";
-          progressBadge.className = badgeClass("queued");
-          progressBadge.textContent = symbols.length ? "Ready" : "Waiting";
-          runBadge.className = badgeClass("queued");
-          runBadge.textContent = symbols.length ? "Reviewed" : "Draft";
-          statusList.innerHTML = "";
-          return;
-        }
-
-        const total = currentRun.symbols.length;
-        const ready = currentRun.symbols.filter((item) => item.status === "ready").length;
-        const running = currentRun.symbols.filter((item) => item.status === "running").length;
-        const failed = currentRun.symbols.filter((item) => item.status === "failed").length;
-        const percent = total ? Math.round((ready / total) * 100) : 0;
-
-        progressFill.style.width = `${percent}%`;
-        progressCount.textContent = `${ready} / ${total} complete`;
-        progressLabel.textContent =
-          currentRun.run.status === "failed"
-            ? (currentRun.run.error_message || "Capture run failed")
-            : running
-              ? "Capturing chart images and saving them locally"
-              : ready === total && total
-                ? "Chart set captured and ready for review"
-                : "Queued for worker processing";
-
-        progressBadge.className = badgeClass(currentRun.run.status);
-        progressBadge.textContent = badgeText(currentRun.run.status);
-        runBadge.className = badgeClass(currentRun.run.status);
-        runBadge.textContent = badgeText(currentRun.run.status);
-
-        statusList.innerHTML = currentRun.symbols
-          .map((item) => `
-            <div class="status-row">
-              <div>
-                <strong>${escapeHtml(item.symbol)}</strong>
-                <div class="muted">${escapeHtml(item.error_message || item.source_url || "Waiting for capture")}</div>
-              </div>
-              <span class="${badgeClass(item.status)}">${badgeText(item.status)}</span>
-            </div>
-          `)
-          .join("");
-
-        if (failed && currentRun.run.status !== "failed") {
-          progressBadge.className = badgeClass("failed");
-          progressBadge.textContent = "Issues";
-        }
+      function clearResultLaunch() {
+        resultLaunch.classList.add("hidden");
+        resultLaunch.innerHTML = "";
       }
 
-      function renderGallery() {
-        const items = currentRun ? currentRun.symbols : [];
-        galleryPill.textContent = `${items.length} card${items.length === 1 ? "" : "s"}`;
-        if (!items.length) {
-          gallery.innerHTML = `
-            <div class="source-card">
-              <strong>No charts generated yet</strong>
-              <p>Once the user confirms symbols and starts the job, the gallery will fill with one card per captured chart.</p>
-            </div>
-          `;
-          return;
-        }
-
-        gallery.innerHTML = items
-          .map((item) => `
-            <article class="chart-card">
-              <div class="chart-preview" style="${item.image_url ? `background-image: linear-gradient(180deg, rgba(8, 17, 30, 0.08), rgba(8, 17, 30, 0.78)), url('${item.image_url}'); background-size: cover; background-position: center;` : ''}">
-                <span>${escapeHtml(item.image_url ? `${item.symbol} captured chart` : `Awaiting screenshot for ${item.symbol}`)}</span>
-              </div>
-              <div class="chart-body">
-                <div class="chart-top">
-                  <div>
-                    <h3 class="chart-symbol">${escapeHtml(item.symbol)}</h3>
-                    <p class="chart-meta">${escapeHtml(item.source_url || "StockCharts source pending")}</p>
-                  </div>
-                  <span class="${badgeClass(item.status)}">${badgeText(item.status)}</span>
-                </div>
-                <div class="card-actions">
-                  ${item.image_url ? `<a class="card-link" href="${item.image_url}" target="_blank" rel="noreferrer">Open saved PNG</a>` : ""}
-                  ${item.source_url ? `<a class="card-link" href="${item.source_url}" target="_blank" rel="noreferrer">Open source chart</a>` : ""}
-                </div>
-              </div>
-            </article>
-          `)
-          .join("");
+      function showResultLaunch(runId) {
+        const href = appUrl(`/results/${runId}`);
+        resultLaunch.innerHTML = `Combined chart page ready. <a href="${href}">Open results</a>`;
+        resultLaunch.classList.remove("hidden");
       }
 
       function renderAll() {
         renderChips();
         renderStats();
-        renderProgress();
-        renderGallery();
+      }
+
+      async function loadConfigStatus() {
+        try {
+          const response = await fetch(appUrl("/api/config/status"));
+          const json = await response.json();
+          if (json.status !== "ok") {
+            throw new Error(json.detail || "Failed to load config status");
+          }
+          openAiVisionEnabled = Boolean(json.openai_vision_enabled);
+          extractBtn.disabled = !openAiVisionEnabled;
+          if (!openAiVisionEnabled) {
+            clearResultLaunch();
+            uploadStatus.textContent = "AI extraction is not configured yet. Add OPENAI_API_KEY on the server first.";
+            actionStatus.textContent = "Screenshot extraction is waiting for OPENAI_API_KEY on the server.";
+          }
+        } catch (error) {
+          openAiVisionEnabled = false;
+          extractBtn.disabled = true;
+          clearResultLaunch();
+          uploadStatus.textContent = isStandaloneFile
+            ? "Could not reach the local app at http://127.0.0.1:8000."
+            : `Could not load app configuration: ${error.message}`;
+          actionStatus.textContent = uploadStatus.textContent;
+        }
+      }
+
+      function renderSelectedImage(file) {
+        if (!file) {
+          imagePreviewFrame.innerHTML = `<div class="preview-empty">Upload a screenshot to preview it here before extraction.</div>`;
+          return;
+        }
+
+        const url = URL.createObjectURL(file);
+        imagePreviewFrame.innerHTML = `<img src="${url}" alt="Uploaded screenshot preview" />`;
+      }
+
+      async function loadDemoScreenshot() {
+        uploadStatus.textContent = "Loading demo brokerage screenshot...";
+        try {
+          const response = await fetch(appUrl("/static/demo-brokerage-screenshot.png"));
+          const blob = await response.blob();
+          selectedImageFile = new File([blob], "demo-brokerage-screenshot.png", { type: blob.type || "image/png" });
+          renderSelectedImage(selectedImageFile);
+          uploadStatus.textContent = "Demo screenshot loaded. Ready for OCR extraction.";
+        } catch (error) {
+          uploadStatus.textContent = isStandaloneFile
+            ? "Could not load the demo screenshot. Keep the local app running at http://127.0.0.1:8000."
+            : `Could not load demo screenshot: ${error.message}`;
+        }
       }
 
       async function extractNow() {
+        const inputText = sourceText.value.trim();
+        if (!inputText) {
+          const message = "Paste chart notes or upload a screenshot first.";
+          actionStatus.textContent = message;
+          reviewHint.textContent = message;
+          return;
+        }
+
+        startExtractProcessingState();
+        actionStatus.textContent = "Extracting symbols...";
         reviewHint.textContent = "Extracting symbols...";
         try {
-          const response = await fetch("/api/convert/extract", {
+          const response = await fetch(appUrl("/api/convert/extract"), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ text: sourceText.value })
+            body: JSON.stringify({ text: inputText })
           });
           const json = await response.json();
           if (json.status !== "ok") {
@@ -952,8 +955,17 @@
           currentTaskId = null;
           stopRunPolling();
           renderAll();
+          const message = symbols.length
+            ? "Validated ticker symbols are ready for review below."
+            : "No valid listed US ticker symbols were found in that text yet.";
+          actionStatus.textContent = message;
+          reviewHint.textContent = message;
         } catch (error) {
-          reviewHint.textContent = `Could not extract symbols: ${error.message}`;
+          const message = `Could not extract symbols: ${error.message}`;
+          actionStatus.textContent = message;
+          reviewHint.textContent = message;
+        } finally {
+          stopExtractProcessingState();
         }
       }
 
@@ -968,8 +980,73 @@
         renderAll();
       }
 
+      async function extractFromImage() {
+        if (!openAiVisionEnabled) {
+          uploadStatus.textContent = "AI extraction is unavailable until OPENAI_API_KEY is configured on the server.";
+          return;
+        }
+        if (!selectedImageFile) {
+          uploadStatus.textContent = "Choose a screenshot first.";
+          return;
+        }
+
+        startExtractProcessingState();
+        uploadStatus.textContent = "Sending screenshot for AI extraction...";
+        try {
+          const imageDataUrl = await fileToDataUrl(selectedImageFile);
+          const response = await fetch(appUrl("/api/convert/extract-image"), {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ image_data_url: imageDataUrl })
+          });
+          const json = await response.json();
+          if (json.status !== "ok") {
+            throw new Error(json.detail || "Failed to extract symbols from screenshot");
+          }
+
+          sourceText.value = (json.symbols || []).join("\n");
+          symbols = json.symbols || [];
+          currentRun = null;
+          currentTaskId = null;
+          stopRunPolling();
+          renderAll();
+          if (symbols.length) {
+            const message = `AI extraction finished. Found ${symbols.length} symbol${symbols.length === 1 ? "" : "s"} from the screenshot.`;
+            uploadStatus.textContent = message;
+            actionStatus.textContent = message;
+            reviewHint.textContent = "Review the extracted symbols below, then add or remove anything before generating charts.";
+          } else {
+            uploadStatus.textContent = "AI extraction finished, but no valid symbols were found. You can still add symbols manually.";
+            actionStatus.textContent = "No valid symbols were extracted yet.";
+          }
+        } catch (error) {
+          uploadStatus.textContent = isStandaloneFile
+            ? `AI extraction failed: ${error.message}. Keep the local app running at http://127.0.0.1:8000 and configure OPENAI_API_KEY when using this standalone preview.`
+            : `AI extraction failed: ${error.message}`;
+        } finally {
+          stopExtractProcessingState();
+        }
+      }
+
+      function fileToDataUrl(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result || ""));
+          reader.onerror = () => reject(new Error("Could not read the screenshot file."));
+          reader.readAsDataURL(file);
+        });
+      }
+
+      async function extractSymbols() {
+        if (selectedImageFile) {
+          await extractFromImage();
+          return;
+        }
+        await extractNow();
+      }
+
       async function loadRun(runId) {
-        const response = await fetch(`/api/convert/runs/${runId}`);
+        const response = await fetch(appUrl(`/api/convert/runs/${runId}`));
         const json = await response.json();
         if (json.status !== "ok") {
           throw new Error(json.detail || "Could not load run");
@@ -987,6 +1064,18 @@
         }
       }
 
+      function resetWorkingState(options = {}) {
+        const { clearText = false } = options;
+        symbols = [];
+        currentRun = null;
+        currentTaskId = null;
+        stopRunPolling();
+        if (clearText) {
+          sourceText.value = "";
+        }
+        renderAll();
+      }
+
       function startRunPolling(runId) {
         stopRunPolling();
         runPollHandle = setInterval(async () => {
@@ -994,7 +1083,6 @@
             const runData = await loadRun(runId);
             if (runData.run.status === "ok" || runData.run.status === "failed") {
               stopRunPolling();
-              await loadRunHistory();
             }
           } catch (error) {
             stopRunPolling();
@@ -1002,15 +1090,18 @@
         }, 1500);
       }
 
-      async function generateCharts() {
+      async function generateCharts(options = {}) {
         if (!symbols.length) {
-          reviewHint.textContent = "Extract symbols first, or add at least one symbol manually.";
+          reviewHint.textContent = "Extract symbols first, then confirm them here or add at least one symbol manually.";
           return;
         }
 
-        progressLabel.textContent = "Creating run...";
+        startGenerateProcessingState();
+        progressLabel.textContent = options.initiatedByOcr
+          ? "Preparing the combined chart print from screenshot symbols..."
+          : "Preparing the combined chart print...";
         try {
-          const response = await fetch("/api/convert/runs", {
+          const response = await fetch(appUrl("/api/convert/runs"), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -1018,122 +1109,60 @@
               symbols
             })
           });
-          const json = await response.json();
-          if (!response.ok || json.status !== "queued") {
+          let json;
+          try {
+            json = await response.json();
+          } catch (_) {
+            const fallbackText = await response.text();
+            throw new Error(fallbackText || "Unexpected non-JSON response from server");
+          }
+          if (!response.ok || !["queued", "ok"].includes(json.status)) {
             throw new Error(json.detail || "Failed to queue chart generation");
           }
           currentTaskId = json.task_id;
-          await loadRun(json.run_id);
-          startRunPolling(json.run_id);
-          await loadRunHistory();
+          progressLabel.textContent = "Chart print is ready. Opening the combined results page...";
+          window.location.href = appUrl(`/results/${json.run_id}`);
+          if (options.initiatedByOcr) {
+            uploadStatus.textContent = "OCR complete. Opening the combined chart print page...";
+          }
         } catch (error) {
+          stopGenerateProcessingState();
           progressLabel.textContent = `Could not start capture: ${error.message}`;
-        }
-      }
-
-      async function loadRunHistory() {
-        historyList.innerHTML = `
-          <div class="history-card">
-            <strong>Loading recent runs</strong>
-            <p>Checking the convert-run history.</p>
-          </div>
-        `;
-
-        try {
-          const response = await fetch("/api/convert/runs?limit=5");
-          const json = await response.json();
-          if (json.status !== "ok" || !json.data.length) {
-            historyList.innerHTML = `
-              <div class="history-card">
-                <strong>No convert runs yet</strong>
-                <p>Your first screenshot gallery will appear here after a capture run starts.</p>
-              </div>
-            `;
-            return;
+          if (options.initiatedByOcr) {
+            uploadStatus.textContent = `OCR succeeded, but chart generation failed: ${error.message}`;
           }
-
-          historyList.innerHTML = json.data
-            .map((run) => `
-              <div class="history-card">
-                <strong>Run #${run.id}</strong>
-                <p>${escapeHtml(String(run.total_symbols || 0))} symbols • ${escapeHtml(String(run.success_count || 0))} ready</p>
-                <p>Status: ${escapeHtml(String(run.status || "unknown"))}</p>
-                <div class="source-toolbar">
-                  <button class="button button-ghost" data-run-id="${run.id}">Open Run</button>
-                </div>
-              </div>
-            `)
-            .join("");
-
-          for (const button of historyList.querySelectorAll("[data-run-id]")) {
-            button.onclick = async () => {
-              const runId = button.getAttribute("data-run-id");
-              await loadRun(runId);
-              if (currentRun && currentRun.run.status === "running") {
-                startRunPolling(runId);
-              }
-            };
-          }
-        } catch (error) {
-          historyList.innerHTML = `
-            <div class="history-card">
-              <strong>Run history unavailable</strong>
-              <p>${escapeHtml(error.message)}</p>
-            </div>
-          `;
         }
       }
 
-      async function pollTask(taskId) {
-        for (let attempt = 0; attempt < 120; attempt += 1) {
-          const response = await fetch(`/api/jobs/status/${taskId}`);
-          const json = await response.json();
-          syncStatus.textContent = `Task ${taskId}: ${json.state}`;
-          if (json.state === "SUCCESS") return json;
-          if (json.state === "FAILURE") throw new Error(json.error || "Task failed");
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-        }
-        throw new Error("Task timeout");
-      }
-
-      async function runSourceSync() {
-        syncStatus.textContent = "Starting source sync...";
-        try {
-          const response = await fetch("/api/jobs/run", { method: "POST" });
-          const json = await response.json();
-          if (!json.task_id) {
-            syncStatus.textContent = "Sync finished.";
-            return;
-          }
-          syncStatus.textContent = `Queued source sync: ${json.task_id}`;
-          await pollTask(json.task_id);
-          syncStatus.textContent = "Source sync finished successfully.";
-        } catch (error) {
-          syncStatus.textContent = `Sync error: ${error.message}`;
-        }
-      }
-
-      document.getElementById("extractBtn").onclick = extractNow;
-      document.getElementById("generateBtn").onclick = generateCharts;
-      document.getElementById("sampleBtn").onclick = () => {
-        sampleIndex = (sampleIndex + 1) % sampleTexts.length;
-        sourceText.value = sampleTexts[sampleIndex];
-        extractNow();
-      };
+      extractBtn.onclick = extractSymbols;
+      generateBtn.onclick = generateCharts;
       document.getElementById("addSymbolBtn").onclick = addManualSymbol;
-      document.getElementById("syncBtn").onclick = runSourceSync;
-      document.getElementById("exportBtn").onclick = () => {
-        window.location.href = "/api/export/latest.csv";
-      };
       manualSymbol.addEventListener("keydown", (event) => {
         if (event.key === "Enter") {
           event.preventDefault();
           addManualSymbol();
         }
       });
+      sourceImage.addEventListener("change", (event) => {
+        selectedImageFile = event.target.files && event.target.files[0] ? event.target.files[0] : null;
+        resetWorkingState({ clearText: true });
+        if (selectedImageFile) {
+          uploadStatus.textContent = openAiVisionEnabled
+            ? `Selected ${selectedImageFile.name}. Ready for AI extraction.`
+            : "Selected screenshot, but AI extraction is not configured yet.";
+          actionStatus.textContent = openAiVisionEnabled
+            ? "Previous symbols cleared. Extract the new screenshot when ready."
+            : "Previous symbols cleared. Configure OPENAI_API_KEY before extracting this screenshot.";
+          reviewHint.textContent = "Previous symbols cleared. Run extraction for the new screenshot.";
+        } else {
+          uploadStatus.textContent = "No screenshot selected yet.";
+          actionStatus.textContent = "Paste notes or upload a screenshot to begin.";
+        }
+        renderSelectedImage(selectedImageFile);
+      });
 
+      loadConfigStatus();
       renderAll();
-      loadRunHistory();
     </script>
   </body>
 </html>

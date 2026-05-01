@@ -78,6 +78,38 @@ def init_db() -> None:
             CREATE INDEX IF NOT EXISTS idx_convert_runs_created_at ON convert_runs(created_at);
             CREATE INDEX IF NOT EXISTS idx_convert_symbols_run_id ON convert_symbols(run_id);
             CREATE INDEX IF NOT EXISTS idx_convert_symbols_symbol ON convert_symbols(symbol);
+
+            CREATE TABLE IF NOT EXISTS watchlist (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                symbol TEXT NOT NULL UNIQUE,
+                source_url TEXT,
+                image_path TEXT,
+                added_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_watchlist_added_at ON watchlist(added_at);
+
+            CREATE TABLE IF NOT EXISTS saved_lists (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                run_id INTEGER,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY(run_id) REFERENCES convert_runs(id)
+            );
+
+            CREATE TABLE IF NOT EXISTS saved_list_symbols (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                saved_list_id INTEGER NOT NULL,
+                position INTEGER NOT NULL,
+                symbol TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY(saved_list_id) REFERENCES saved_lists(id)
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_saved_lists_created_at ON saved_lists(created_at);
+            CREATE INDEX IF NOT EXISTS idx_saved_list_symbols_saved_list_id ON saved_list_symbols(saved_list_id);
             """
         )
         conn.commit()
@@ -301,6 +333,135 @@ def list_convert_symbols(run_id: int) -> list[sqlite3.Row]:
         return conn.execute(
             "SELECT * FROM convert_symbols WHERE run_id=? ORDER BY position ASC",
             (run_id,),
+        ).fetchall()
+    finally:
+        conn.close()
+
+
+def upsert_watchlist_symbol(symbol: str, source_url: str = "", image_path: str = "") -> int:
+    conn = _connect()
+    now = datetime.utcnow().isoformat()
+    symbol = symbol.strip().upper()
+    try:
+        existing = conn.execute(
+            "SELECT id FROM watchlist WHERE symbol=?",
+            (symbol,),
+        ).fetchone()
+        if existing:
+            conn.execute(
+                """
+                UPDATE watchlist
+                SET source_url=?, image_path=?, updated_at=?
+                WHERE symbol=?
+                """,
+                (source_url or None, image_path or None, now, symbol),
+            )
+            conn.commit()
+            return int(existing["id"])
+
+        cur = conn.execute(
+            """
+            INSERT INTO watchlist(symbol, source_url, image_path, added_at, updated_at)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (symbol, source_url or None, image_path or None, now, now),
+        )
+        conn.commit()
+        return int(cur.lastrowid)
+    finally:
+        conn.close()
+
+
+def list_watchlist_symbols() -> list[sqlite3.Row]:
+    conn = _connect()
+    try:
+        return conn.execute(
+            "SELECT * FROM watchlist ORDER BY added_at DESC, symbol ASC"
+        ).fetchall()
+    finally:
+        conn.close()
+
+
+def delete_watchlist_symbol(symbol: str) -> bool:
+    conn = _connect()
+    try:
+        cur = conn.execute(
+            "DELETE FROM watchlist WHERE symbol=?",
+            (symbol.strip().upper(),),
+        )
+        conn.commit()
+        return cur.rowcount > 0
+    finally:
+        conn.close()
+
+
+def create_saved_list(name: str, run_id: int, symbols: list[str]) -> int:
+    conn = _connect()
+    now = datetime.utcnow().isoformat()
+    clean_name = name.strip()
+    clean_symbols = [symbol.strip().upper() for symbol in symbols if symbol.strip()]
+    try:
+        cur = conn.execute(
+            """
+            INSERT INTO saved_lists(name, run_id, created_at, updated_at)
+            VALUES (?, ?, ?, ?)
+            """,
+            (clean_name, run_id, now, now),
+        )
+        saved_list_id = int(cur.lastrowid)
+        conn.executemany(
+            """
+            INSERT INTO saved_list_symbols(saved_list_id, position, symbol, created_at)
+            VALUES (?, ?, ?, ?)
+            """,
+            [(saved_list_id, index + 1, symbol, now) for index, symbol in enumerate(clean_symbols)],
+        )
+        conn.commit()
+        return saved_list_id
+    finally:
+        conn.close()
+
+
+def list_saved_lists() -> list[sqlite3.Row]:
+    conn = _connect()
+    try:
+        return conn.execute(
+            """
+            SELECT
+                sl.*,
+                COUNT(sls.id) AS symbol_count,
+                GROUP_CONCAT(sls.symbol, ', ') AS symbols
+            FROM saved_lists sl
+            LEFT JOIN saved_list_symbols sls ON sls.saved_list_id = sl.id
+            GROUP BY sl.id
+            ORDER BY sl.created_at DESC, sl.id DESC
+            """
+        ).fetchall()
+    finally:
+        conn.close()
+
+
+def get_saved_list(saved_list_id: int) -> sqlite3.Row | None:
+    conn = _connect()
+    try:
+        return conn.execute(
+            "SELECT * FROM saved_lists WHERE id=?",
+            (saved_list_id,),
+        ).fetchone()
+    finally:
+        conn.close()
+
+
+def list_saved_list_symbols(saved_list_id: int) -> list[sqlite3.Row]:
+    conn = _connect()
+    try:
+        return conn.execute(
+            """
+            SELECT * FROM saved_list_symbols
+            WHERE saved_list_id=?
+            ORDER BY position ASC, id ASC
+            """,
+            (saved_list_id,),
         ).fetchall()
     finally:
         conn.close()

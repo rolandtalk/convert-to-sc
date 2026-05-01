@@ -77,6 +77,16 @@ See [docs/product-spec.md](docs/product-spec.md) and [docs/roadmap.md](docs/road
 4. Run the web app with `python run_web.py`.
 5. Run the worker with `celery -A app.celery_app:celery_app worker --loglevel=INFO`.
 
+### Codex Browser Preview
+
+If you want to preview the UI quickly in Codex without Redis/Celery, set:
+
+```env
+RUN_TASKS_INLINE=true
+```
+
+In that mode, chart capture runs execute inline in the web process so the app can still be tested locally in one service.
+
 ## Railway Run
 
 For Railway, use:

@@ -3,7 +3,10 @@ __pycache__/
 *.pyc
 .env
 .pytest_cache/
-data/
+/data/
+!app/data/
+!app/data/us_tickers.txt
+!app/data/us_tickers.meta.json
 service-account.json
 .DS_Store
 artifact_slides/
