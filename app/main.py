@@ -7,17 +7,30 @@ from pathlib import Path
 
 from celery.result import AsyncResult
 from fastapi import FastAPI, HTTPException, Query
+from pydantic import BaseModel, Field
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.celery_app import celery_app
-from app.db import fetch_picks, init_db, latest_run, latest_runs
+from app.config import settings
+from app.db import (
+    create_convert_run,
+    fetch_picks,
+    get_convert_run,
+    init_db,
+    latest_run,
+    latest_runs,
+    list_convert_runs,
+    list_convert_symbols,
+)
 from app.jobs import shutdown_scheduler, start_scheduler
-from app.tasks import run_sctr_pipeline_task
+from app.tasks import build_convert_run_key, capture_convert_run_task, run_sctr_pipeline_task
+from app.services.symbol_extract import extract_symbols
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 STATIC_DIR = BASE_DIR / "static"
+ARTIFACTS_DIR = settings.screenshot_output_dir
 
 
 @asynccontextmanager
@@ -30,6 +43,17 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(title="Convert to SC", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/artifacts", StaticFiles(directory=ARTIFACTS_DIR), name="artifacts")
+
+
+class ExtractRequest(BaseModel):
+    text: str = Field(default="")
+
+
+class ConvertRunRequest(BaseModel):
+    text: str = Field(default="")
+    symbols: list[str] = Field(default_factory=list)
 
 
 @app.get("/")
@@ -63,6 +87,48 @@ def api_latest_picks(
 def api_latest_runs(limit: int = Query(default=10, ge=1, le=100)):
     rows = latest_runs(limit=limit)
     return {"status": "ok", "data": [dict(r) for r in rows]}
+
+
+@app.post("/api/convert/extract")
+def api_extract_symbols(payload: ExtractRequest):
+    symbols = extract_symbols(payload.text)
+    return {"status": "ok", "symbols": symbols, "count": len(symbols)}
+
+
+@app.post("/api/convert/runs")
+def api_create_convert_run(payload: ConvertRunRequest):
+    symbols = payload.symbols or extract_symbols(payload.text)
+    if not payload.text.strip():
+        raise HTTPException(status_code=400, detail="Source text is required.")
+    if not symbols:
+        raise HTTPException(status_code=400, detail="No symbols were found.")
+
+    run_id = create_convert_run(
+        run_key=build_convert_run_key(),
+        source_text=payload.text.strip(),
+        symbols=symbols,
+    )
+    task = capture_convert_run_task.delay(run_id=run_id)
+    return {"status": "queued", "run_id": run_id, "task_id": task.id, "symbols": symbols}
+
+
+@app.get("/api/convert/runs")
+def api_list_convert_runs(limit: int = Query(default=10, ge=1, le=100)):
+    rows = list_convert_runs(limit=limit)
+    return {"status": "ok", "data": [dict(row) for row in rows]}
+
+
+@app.get("/api/convert/runs/{run_id}")
+def api_get_convert_run(run_id: int):
+    run = get_convert_run(run_id)
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found.")
+    symbols = []
+    for row in list_convert_symbols(run_id):
+        item = dict(row)
+        item["image_url"] = f"/artifacts/{item['image_path']}" if item.get("image_path") else None
+        symbols.append(item)
+    return {"status": "ok", "run": dict(run), "symbols": symbols}
 
 
 @app.post("/api/jobs/run")

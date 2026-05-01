@@ -48,6 +48,36 @@ def init_db() -> None:
             CREATE INDEX IF NOT EXISTS idx_picks_run_id ON picks(run_id);
             CREATE INDEX IF NOT EXISTS idx_picks_symbol ON picks(symbol);
             CREATE INDEX IF NOT EXISTS idx_runs_status ON runs(status);
+
+            CREATE TABLE IF NOT EXISTS convert_runs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                run_key TEXT UNIQUE,
+                source_text TEXT NOT NULL,
+                status TEXT NOT NULL,
+                total_symbols INTEGER DEFAULT 0,
+                success_count INTEGER DEFAULT 0,
+                error_message TEXT,
+                created_at TEXT NOT NULL,
+                finished_at TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS convert_symbols (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                run_id INTEGER NOT NULL,
+                position INTEGER NOT NULL,
+                symbol TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'pending',
+                source_url TEXT,
+                image_path TEXT,
+                error_message TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY(run_id) REFERENCES convert_runs(id)
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_convert_runs_created_at ON convert_runs(created_at);
+            CREATE INDEX IF NOT EXISTS idx_convert_symbols_run_id ON convert_symbols(run_id);
+            CREATE INDEX IF NOT EXISTS idx_convert_symbols_symbol ON convert_symbols(symbol);
             """
         )
         conn.commit()
@@ -163,5 +193,114 @@ def fetch_picks(
             [*params, limit, offset],
         ).fetchall()
         return int(count), rows
+    finally:
+        conn.close()
+
+
+def create_convert_run(run_key: str, source_text: str, symbols: list[str]) -> int:
+    conn = _connect()
+    now = datetime.utcnow().isoformat()
+    try:
+        cur = conn.execute(
+            """
+            INSERT INTO convert_runs(run_key, source_text, status, total_symbols, created_at)
+            VALUES(?, ?, 'queued', ?, ?)
+            """,
+            (run_key, source_text, len(symbols), now),
+        )
+        run_id = int(cur.lastrowid)
+        conn.executemany(
+            """
+            INSERT INTO convert_symbols(
+                run_id, position, symbol, status, created_at, updated_at
+            ) VALUES (?, ?, ?, 'pending', ?, ?)
+            """,
+            [(run_id, index + 1, symbol, now, now) for index, symbol in enumerate(symbols)],
+        )
+        conn.commit()
+        return run_id
+    finally:
+        conn.close()
+
+
+def update_convert_run_status(run_id: int, status: str, error_message: str = "") -> None:
+    conn = _connect()
+    try:
+        conn.execute(
+            "UPDATE convert_runs SET status=?, error_message=? WHERE id=?",
+            (status, error_message, run_id),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def update_convert_symbol_status(
+    symbol_id: int,
+    *,
+    status: str,
+    source_url: str | None = None,
+    image_path: str | None = None,
+    error_message: str | None = None,
+) -> None:
+    conn = _connect()
+    now = datetime.utcnow().isoformat()
+    try:
+        conn.execute(
+            """
+            UPDATE convert_symbols
+            SET status=?, source_url=COALESCE(?, source_url), image_path=COALESCE(?, image_path),
+                error_message=?, updated_at=?
+            WHERE id=?
+            """,
+            (status, source_url, image_path, error_message, now, symbol_id),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def finish_convert_run(run_id: int, status: str, success_count: int, error_message: str = "") -> None:
+    conn = _connect()
+    try:
+        conn.execute(
+            """
+            UPDATE convert_runs
+            SET status=?, success_count=?, error_message=?, finished_at=?
+            WHERE id=?
+            """,
+            (status, success_count, error_message, datetime.utcnow().isoformat(), run_id),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_convert_run(run_id: int) -> sqlite3.Row | None:
+    conn = _connect()
+    try:
+        return conn.execute("SELECT * FROM convert_runs WHERE id=?", (run_id,)).fetchone()
+    finally:
+        conn.close()
+
+
+def list_convert_runs(limit: int = 20) -> list[sqlite3.Row]:
+    conn = _connect()
+    try:
+        return conn.execute(
+            "SELECT * FROM convert_runs ORDER BY created_at DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+    finally:
+        conn.close()
+
+
+def list_convert_symbols(run_id: int) -> list[sqlite3.Row]:
+    conn = _connect()
+    try:
+        return conn.execute(
+            "SELECT * FROM convert_symbols WHERE run_id=? ORDER BY position ASC",
+            (run_id,),
+        ).fetchall()
     finally:
         conn.close()

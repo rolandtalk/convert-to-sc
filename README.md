@@ -26,6 +26,20 @@ The current codebase provides:
 
 The screenshot workflow and text-to-symbol extraction workflow are the next features to implement.
 
+## Production Shape
+
+The current deployment target is:
+
+- `convert-to-sc-production.up.railway.app`
+
+The recommended production setup is Railway with:
+
+- one Docker app service running both FastAPI and the Celery worker
+- one Redis service
+- one Railway volume mounted at `/app/data` for SQLite and screenshot files
+
+See [docs/railway-deploy.md](docs/railway-deploy.md) for the full setup.
+
 ## Planned Workflow
 
 ### Phase 1
@@ -62,6 +76,14 @@ See [docs/product-spec.md](docs/product-spec.md) and [docs/roadmap.md](docs/road
 3. Start Redis.
 4. Run the web app with `python run_web.py`.
 5. Run the worker with `celery -A app.celery_app:celery_app worker --loglevel=INFO`.
+
+## Railway Run
+
+For Railway, use:
+
+- start command: `./scripts/start_railway.sh`
+- volume mount path: `/app/data`
+- public domain: `convert-to-sc-production.up.railway.app`
 
 ## Existing API Endpoints
 
